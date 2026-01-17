@@ -13,7 +13,7 @@ vocab_size = 25000
 embed_dim = 128
 num_filters = 200
 kernel_sizes = [3, 4, 5]
-epochs = 10
+epochs = 15
 val_split = 0.1
 lr = 1e-3 * (batch_size / 512)
 
@@ -62,6 +62,7 @@ for e in range(epochs):
     total_loss = 0
 
     # train split
+    model.train()
     for i in range(0, N, batch_size):
         xb = X_shuffle[i:i+batch_size]
         yb = Y_shuffle[i:i+batch_size]
@@ -76,17 +77,19 @@ for e in range(epochs):
         total_loss += loss.item()
 
     # val split
-    TP = FP = FN = TN = 0
-    for i in range(0, len(X_val), batch_size):
-        logits = model(X_val[i:i+batch_size])
-        val_loss = F.cross_entropy(logits, Y_val[i:i+batch_size])
-        preds = logits.argmax(dim=1)
-        y = Y_val[i:i+batch_size]
+    model.eval()
+    with torch.no_grad():
+        TP = FP = FN = TN = 0
+        for i in range(0, len(X_val), batch_size):
+            logits = model(X_val[i:i+batch_size])
+            val_loss = F.cross_entropy(logits, Y_val[i:i+batch_size])
+            preds = logits.argmax(dim=1)
+            y = Y_val[i:i+batch_size]
 
-        TP += ((preds == 1) & (y == 1)).sum().item()
-        FP += ((preds == 1) & (y == 0)).sum().item()
-        FN += ((preds == 0) & (y == 1)).sum().item()
-        TN += ((preds == 0) & (y == 0)).sum().item()
+            TP += ((preds == 1) & (y == 1)).sum().item()
+            FP += ((preds == 1) & (y == 0)).sum().item()
+            FN += ((preds == 0) & (y == 1)).sum().item()
+            TN += ((preds == 0) & (y == 0)).sum().item()
 
     # метрики
     accuracy = (TP + TN) / (TP + TN + FP + FN) # доля правильных ответов
